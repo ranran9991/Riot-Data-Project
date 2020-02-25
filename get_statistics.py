@@ -5,12 +5,6 @@ import ast
 
 curr_account_id = '0VH_-CuMjRhsYkF9pOP9TXnRvZodh-rWWj22Ty0af2gpRw'
 
-def only_dict(d):
-    '''
-    Convert json string representation of dictionary to a python dict
-    '''
-    return ast.literal_eval(d)
-
 df = pd.read_pickle('match_info.pkl')
 teams_df = pd.DataFrame(df.teams.tolist(), columns=['team_1', 'team_2'])
 team_1 = json_normalize(teams_df['team_1']).add_prefix('team_1.')
@@ -43,8 +37,21 @@ def sort_out_teams(dataframe):
         except:
             return
 
-
+# take correct team according to player
 sort_out_teams(df)
+# take correct participant according to its ID
 df['participants'] = df.apply(lambda row: row.participants[row.participantIdentities-1], axis=1)
 df['win'] = df['win'].replace(['Fail', 'Win'], [0, 1])
-print(df['participants'].head(5))
+# champion Id column
+df['championId'] = df.apply(lambda row: row.participants['championId'], axis=1)
+df['stats'] = df.apply(lambda row: row.participants['stats'], axis=1)
+# remove useless columns
+df.drop(['participants', 'gameCreation', 'queueId', 'seasonId','gameId', 'bans', 'gameMode', 'gameType', 'gameVersion', 'mapId', 'participantIdentities', 'platformId', 'vilemawKills', 'dominionVictoryScore'], axis=1, inplace=True)
+
+stats_df = json_normalize(df['stats'].tolist()).drop(['inhibitorKills', 'win'], axis=1)
+# take meaningful columns from stats
+columns_to_keep = ['assists', 'champLevel', 'damageDealtToObjectives', 'damageDealtToTurrets', 'damageSelfMitigated', 'deaths', 'doubleKills', 'firstTowerKill', 'firstTowerAssist', 'goldEarned', 'goldSpent', 'killingSprees', 'kills', 'largestCriticalStrike', 'largestKillingSpree', 'largestMultiKill', 'longestTimeSpentLiving', 'magicDamageDealt', 'magicDamageDealtToChampions', 'magicalDamageTaken', 'neutralMinionsKilled', 'neutralMinionsKilledEnemyJungle', 'neutralMinionsKilledTeamJungle', 'pentaKills', 'physicalDamageDealt', 'physicalDamageDealtToChampions', 'physicalDamageTaken', 'totalDamageDealt', 'totalDamageDealtToChampions', 'totalDamageTaken', 'totalHeal', 'totalMinionsKilled', 'totalPlayerScore', 'totalTimeCrowdControlDealt', 'totalUnitsHealed', 'tripleKills', 'trueDamageDealt', 'trueDamageDealtToChampions', 'trueDamageTaken', 'turretKills', 'visionScore', 'wardsKilled', 'wardsPlaced']
+
+stats_df = stats_df[columns_to_keep]
+df = df.join(stats_df)
+print(f'Number of columns: {len(df.columns)}, Number of rows: {len(df.index)}')
