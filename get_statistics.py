@@ -3,6 +3,8 @@ import numpy as np
 from pandas import json_normalize
 import ast
 import matplotlib.pyplot as plt
+from scipy.stats import shapiro
+from scipy.stats import normaltest
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 
@@ -77,6 +79,8 @@ if __name__ == '__main__':
 
     set_sizes((12,8), 10)
     LANES=['MIDDLE', 'TOP', 'JUNGLE', 'BOTTOM', 'NONE']
+    # lanes that have accurate labels
+    GOOD_LANES=['MIDDLE', 'TOP', 'JUNGLE']
     # Games in each lane
     fig, ax = plt.subplots()
     ax.set_title('Number of games in each lane')
@@ -87,6 +91,9 @@ if __name__ == '__main__':
     ax.set_title('Vision Score in each lane')
     for lane in LANES:
         sns.distplot(df.loc[df['lane'] == lane]['visionScore'], label=lane, hist=False, kde=True)
+    for lane in GOOD_LANES:
+        p = normaltest(df.loc[df['lane'] == lane]['visionScore'])[1]
+        print(f'Vision Score in {lane}: {p}')
     ax.set_ylabel('Frequency')
     ax.set_xlabel('Vision Score')
     ax.legend()
@@ -96,6 +103,10 @@ if __name__ == '__main__':
     df['gameDuration'] = df['gameDuration'].apply(lambda x: x/60)
     for lane in LANES:
         sns.distplot(df.loc[df['lane'] == lane]['gameDuration'], label=lane, hist=False, kde=True)
+    for lane in GOOD_LANES:
+        p = normaltest(df.loc[df['lane'] == lane]['gameDuration'])[1]
+        print(f'Duration of games in {lane}: {p}')
+
     ax.set_xlabel('Minutes')
     ax.set_ylabel('Frequency')
     ax.legend()
@@ -121,6 +132,9 @@ if __name__ == '__main__':
     ax.set_title('Level in each lane')
     for lane in LANES:
         sns.distplot(df.loc[df['lane'] == lane]['champLevel'], label=lane, hist=False, kde=True)
+    for lane in GOOD_LANES:
+        p = normaltest(df.loc[df['lane'] == lane]['champLevel'])[1]
+        print(f'Levels in {lane}: {p}')
     ax.set_xlabel('Level')
     ax.set_ylabel('Frequency')
     ax.legend()
@@ -134,7 +148,6 @@ if __name__ == '__main__':
     ax.legend()
 
     fig, ax = plt.subplots()
-    ax.set_title('Correlation between features')
     corr = df.drop(['lane'], axis=1).corr()
     cax = ax.matshow(corr,cmap='coolwarm', vmin=-1, vmax=1)
     fig.colorbar(cax)
@@ -142,7 +155,7 @@ if __name__ == '__main__':
     ax.set_xticks(ticks)
     plt.xticks(rotation=90)
     ax.set_yticks(ticks)
-    ax.set_xticklabels(df.drop(['lane', 'championId'], axis=1).columns)
+    #ax.set_xticklabels(df.drop(['lane', 'championId'], axis=1).columns)
     ax.set_yticklabels(df.drop(['lane', 'championId'],axis=1).columns)
 
     def multipage(filename, figs=None, dpi=200):
@@ -155,4 +168,4 @@ if __name__ == '__main__':
 
     multipage('images.pdf')
     df.to_pickle('cleaned_data.pkl')
-#plt.show()
+    #plt.show()
