@@ -1,6 +1,7 @@
 import warnings
 import pandas as pd
 import numpy as np
+import argparse
 from copy import deepcopy
 # set random seed
 RANDOM_SEED=42
@@ -142,82 +143,6 @@ def plot_clusters(df, scaler, dim_reductions, clusterers, ae=None):
 
     fig.tight_layout()
 
-def plot_cluster_sil_values(df, scaler, dim_reduction_name, clusterers, num_clusters=5, ae=None):
-    fig, axs = plt.subplots(len(clusterers), 2)
-    #axs = axs.flatten()
-    lanes_df = df['lane']
-    # indices of elements who are from MID, TOP or JUNGLE
-    known_label_indices = [i for i in range(len(lanes_df)) if lanes_df[i] in ['MIDDLE', 'TOP', 'JUNGLE']]
-    true_labels = lanes_df[known_label_indices]
-    data_no_labels = df.drop(['lane', 'championId'], axis=1)
-    data = scaleColumns(data_no_labels, scaler=scaler)
-    
-    
-    if ae is not None:
-        if AE.is_fit is True and AE.mid_size == ae:
-            data = AE.predict(scaled_data)
-        else:
-            AE = AutoEncoder(54, ae)
-            AE = dim_reductions['Auto Encoder']
-            data = AE.fit_transform(scaled_data)
-
-
-    for i, clusterer_name in enumerate(clusterers):
-        clusterer = clusterers[clusterer_name]
-        labels = clusterer.predict(data)
-        # plot clusters
-        reduced_data = dim_reductions[dim_reduction_name].fit_transform(data)
-        unique_values = set(labels)
-        # for each cluster
-        for unique_value in unique_values:
-            indices = [k for k in range(len(labels)) if  labels[k] == unique_value]
-            cluster_data = reduced_data[indices]
-            axs[i][1].scatter(cluster_data[:, 0], cluster_data[:, 1], label=str(unique_value))
-
-        axs[i][1].set_title(f'{clusterer_name}')
-        axs[i][1].xaxis.set_major_formatter(plt.NullFormatter())
-        axs[i][1].yaxis.set_major_formatter(plt.NullFormatter())
-
-        # plot sil values
-        silhouette_avg = silhouette_score(data_no_labels, labels)
-        # Compute the silhouette scores for each sample
-        sample_silhouette_values = silhouette_samples(data_no_labels, labels)
-
-        axs[i][0].set_xlim([-0.1, 1])
-        # The (n_clusters+1)*10 is for inserting blank space between silhouette
-        # plots of individual clusters, to demarcate them clearly.
-        axs[i][0].set_ylim([0, len(data) + (num_clusters + 1) * 10])
-        y_lower = 10
-        for j in range(num_clusters):
-
-            # Aggregate the silhouette scores for samples belonging to
-            # cluster i, and sort them
-            jth_cluster_silhouette_values = \
-                sample_silhouette_values[labels == j]
-
-            jth_cluster_silhouette_values.sort()
-
-            size_cluster_j = jth_cluster_silhouette_values.shape[0]
-            y_upper = y_lower + size_cluster_j
-
-            color = cm.nipy_spectral(float(j) / num_clusters)
-            axs[i][0].fill_betweenx(np.arange(y_lower, y_upper),
-                            0, jth_cluster_silhouette_values,
-                            facecolor=color, edgecolor=color, alpha=0.7)
-
-            # Label the silhouette plots with their cluster numbers at the middle
-            axs[i][0].text(-0.05, y_lower + 0.5 * size_cluster_j, str(i))
-
-            # Compute the new y_lower for next plot
-            y_lower = y_upper + 10  # 10 for the 0 samples
-
-        axs[i][0].set_xlabel("The silhouette coefficient values")
-        axs[i][0].set_ylabel("Cluster label")
-        # The vertical line for average silhouette score of all the values
-        axs[i][0].axvline(x=silhouette_avg, color="red", linestyle="--")
-        axs[i][0].set_yticks([])  # Clear the yaxis labels / ticks
-        axs[i][0].set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-    
 def comparison_table(df, clusterers, scaler, ae_dims=[]):
     global AE
     table = []
@@ -340,19 +265,18 @@ def gridsearch_params(df, scaler, clusterer, params, ae=None):
     return (best_param, best_score, best_sil, best_v),  best_estimator
 
 if __name__ == '__main__':
-    df = pd.read_pickle('cleaned_data.pkl')
-    #plot_clusters(df, scalers['Z-Score'], dim_reductions, clusterers)
-    #plot_cluster_sil_values(df, scalers['Z-Score'], 'UMAP', clusterers, num_clusters=6, ae=10)
-    #comparison_table(df, clusterers, scalers['Z-Score'], ae_dims=[5, 10])
-    #print(gridsearch_params(df, scalers['Z-Score'], clusterers['FCM'], params['FCM']))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--path', dest='path', help='Path to data file', default='cleaned_data.pkl')
+    args = parser.parse_args()
+    df = pd.read_pickle(args.path)
+    ############## NO AE ###################
     for clusterer_name in clusterers:
         param, estimator = gridsearch_params(df, scalers['Z-Score'], clusterers[clusterer_name], params[clusterer_name])
         print(f'No AE: {clusterer_name} : {param}')
-        #clusterers[clusterer_name].set_params(**param[0])
         clusterers[clusterer_name] = estimator
-
     comparison_table(df, clusterers, scalers['Z-Score'])
     plot_clusters(df, scalers['Z-Score'], dim_reductions, clusterers)
+    ############## AE 5 ###################
     for clusterer_name in clusterers:
         param, estimator = gridsearch_params(df, scalers['Z-Score'], clusterers[clusterer_name], params[clusterer_name], ae=5)
         print(f'AE5: {clusterer_name} : {param}')
@@ -360,6 +284,7 @@ if __name__ == '__main__':
 
     plot_clusters(df, scalers['Z-Score'], dim_reductions, clusterers, ae=5)
     comparison_table(df, clusterers, scalers['Z-Score'], ae_dims=[5])
+    ############## AE 10 ###################
     for clusterer_name in clusterers:
         param, estimator = gridsearch_params(df, scalers['Z-Score'], clusterers[clusterer_name], params[clusterer_name], ae=10)
         print(f'AE10: {clusterer_name} : {param}')

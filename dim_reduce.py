@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA, FastICA, KernelPCA
 from sklearn.manifold import TSNE
+import argparse
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.exceptions import DataConversionWarning
 from lib.autoencoder import AutoEncoder
@@ -35,12 +36,8 @@ dim_reductions = {
     'Cosine KPCA': KernelPCA(n_components=2, kernel='cosine'),
     't-SNE': TSNE(n_components=2, perplexity=5),
     'UMAP': umap.UMAP(n_neighbors=200),
-    
 }
 
-dim_reductions = {
-    'Auto Encoder' : AutoEncoder(54)
-}
 
 scalers = {
     'MinMax': MinMaxScaler(),
@@ -60,12 +57,12 @@ def plot_dim_reduction(df, scaler, dim_reductions):
         axs = [axs]
 
     lanes_df = pd.DataFrame(df['lane'])
-    df.drop(['lane', 'championId'], axis=1, inplace=True)
-    df = scaleColumns(df, scaler=scalers['Z-Score'])
+    df_copy = df.drop(['lane', 'championId'], axis=1)
+    df_copy = scaleColumns(df_copy, scaler=scalers['Z-Score'])
 
     for i, dim_reduction in enumerate(dim_reductions):
         # call dim reduction method
-        reduced_data = dim_reductions[dim_reduction].fit_transform(df)
+        reduced_data = dim_reductions[dim_reduction].fit_transform(df_copy)
 
         for lane in lanes:
             # take indices with this specific lane
@@ -83,6 +80,17 @@ def plot_dim_reduction(df, scaler, dim_reductions):
 
 
 if __name__ == '__main__':
-    df = pd.read_pickle('cleaned_data.pkl')
-    plot_dim_reduction(df, scalers['MinMax'], dim_reductions)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--path', dest='path', help='Path to data file', default='cleaned_data.pkl')
+    parser.add_argument('-ae', '--AutoEncoder', dest='AE', help='Use AE', action='store_true', default=False)
+    args = parser.parse_args()
+    df = pd.read_pickle(args.path)
+    
+    if args.AE is True:
+        dim_reductions = {
+            'Auto Encoder' : AutoEncoder(54),    
+        }
+    plot_dim_reduction(df, scalers['Z-Score'], dim_reductions)
+    plot_dim_reduction(df, scalers['MinMax'], dim_reductions)    
+    plot_dim_reduction(df, scalers['None'], dim_reductions)
     plt.show()

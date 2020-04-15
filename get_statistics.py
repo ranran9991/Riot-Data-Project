@@ -7,11 +7,17 @@ from scipy.stats import shapiro
 from scipy.stats import normaltest
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
+import argparse
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--path', dest='path', help='Path to data file', default='match_info.pkl')
+    parser.add_argument('-o', '--output', dest='output', help='Path to output file', default='plots.pdf')
+    args = parser.parse_args()
+    df = pd.read_pickle(args.path)
+
     curr_account_id = '0VH_-CuMjRhsYkF9pOP9TXnRvZodh-rWWj22Ty0af2gpRw'
 
-    df = pd.read_pickle('match_info.pkl')
     teams_df = pd.DataFrame(df.teams.tolist(), columns=['team_1', 'team_2'])
     team_1 = json_normalize(teams_df['team_1']).add_prefix('team_1.')
     team_2 = json_normalize(teams_df['team_2']).add_prefix('team_2.')
@@ -63,6 +69,7 @@ if __name__ == '__main__':
     df = df.join(stats_df)
     df.drop(['stats', 'firstTowerKill', 'firstTowerAssist'], axis=1, inplace=True)
     print(f'Number of columns: {len(df.columns)}, Number of rows: {len(df.index)}')
+    print('Printing normality test p values...')
     df.loc[:, df.columns != 'lane'] = df.loc[:, df.columns != 'lane'].astype(int)
     df = df.drop(['teamId'], axis=1)
     lane_df = df.groupby('lane')
@@ -93,7 +100,7 @@ if __name__ == '__main__':
         sns.distplot(df.loc[df['lane'] == lane]['visionScore'], label=lane, hist=False, kde=True)
     for lane in GOOD_LANES:
         p = normaltest(df.loc[df['lane'] == lane]['visionScore'])[1]
-        print(f'Vision Score in {lane}: {p}')
+        print(f'Vision Score in {lane}: {p:.4}')
     ax.set_ylabel('Frequency')
     ax.set_xlabel('Vision Score')
     ax.legend()
@@ -105,7 +112,7 @@ if __name__ == '__main__':
         sns.distplot(df.loc[df['lane'] == lane]['gameDuration'], label=lane, hist=False, kde=True)
     for lane in GOOD_LANES:
         p = normaltest(df.loc[df['lane'] == lane]['gameDuration'])[1]
-        print(f'Duration of games in {lane}: {p}')
+        print(f'Duration of games in {lane}: {p:.4}')
 
     ax.set_xlabel('Minutes')
     ax.set_ylabel('Frequency')
@@ -134,7 +141,7 @@ if __name__ == '__main__':
         sns.distplot(df.loc[df['lane'] == lane]['champLevel'], label=lane, hist=False, kde=True)
     for lane in GOOD_LANES:
         p = normaltest(df.loc[df['lane'] == lane]['champLevel'])[1]
-        print(f'Levels in {lane}: {p}')
+        print(f'Levels in {lane}: {p:.4}')
     ax.set_xlabel('Level')
     ax.set_ylabel('Frequency')
     ax.legend()
@@ -155,9 +162,8 @@ if __name__ == '__main__':
     ax.set_xticks(ticks)
     plt.xticks(rotation=90)
     ax.set_yticks(ticks)
-    #ax.set_xticklabels(df.drop(['lane', 'championId'], axis=1).columns)
     ax.set_yticklabels(df.drop(['lane', 'championId'],axis=1).columns)
-
+    # function to transfer plots to pdf file
     def multipage(filename, figs=None, dpi=200):
         pp = PdfPages(filename)
         if figs is None:
@@ -166,6 +172,6 @@ if __name__ == '__main__':
             fig.savefig(pp, format='pdf')
         pp.close()
 
-    multipage('images.pdf')
+    multipage(args.output)
     df.to_pickle('cleaned_data.pkl')
     #plt.show()
