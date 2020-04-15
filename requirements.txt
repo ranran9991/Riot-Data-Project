@@ -1,0 +1,13 @@
+numpy==1.18.2
+scipy==1.1.0
+matplotlib==3.2.0
+Keras==2.3.1
+tqdm==4.42.1
+prettytable==0.7.2
+umap_learn==0.3.10
+pandas==1.0.1
+seaborn==0.10.0
+fuzzy_c_means==0.0.6
+riotwatcher==3.0.0
+scikit_learn==0.22.2.post1
+umap==0.1.1
