@@ -6,7 +6,7 @@ Data is already in the repository since it is quite small in size
 ### Requirements
 Install the requirements as specified in requirements.txt
 ```
-pip install -r your_list
+pip install -r requirements.txt
 ```
 ### Raw data statistics 
 To get statistics over raw dataset, run the following
